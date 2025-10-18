@@ -1,60 +1,41 @@
-# app.py
-
-from flask import Flask, request, render_template
+from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
 
-# Initialize the Flask app
+# Initialize Flask app
 app = Flask(__name__)
 
-# Load the trained model from the .pkl file
-# Your notebook saved a Pipeline, which handles both preprocessing and prediction.
-try:
-    model = joblib.load("Finalmodel.pkl")
-except FileNotFoundError:
-    model = None
-    print("Error: Model file 'Finalmodel.pkl' not found.")
-except Exception as e:
-    model = None
-    print(f"Error loading model: {e}")
+# Load your trained model
+model = joblib.load("Finalmodel.pkl")
 
 @app.route('/')
 def home():
-    """Renders the main page with the input form."""
-    return render_template('index.html')
+    return "✅ ML Model API is Running!"
 
+# API endpoint for prediction
 @app.route('/predict', methods=['POST'])
 def predict():
-    """Receives form data, makes a prediction, and returns the result."""
-    if model is None:
-        return render_template('index.html', prediction_text='Error: Model is not loaded.')
-
     try:
-        # Extract features from the form in the correct order and data types.
-        features = {
-            'IQ': [int(request.form['IQ'])],
-            'CGPA': [float(request.form['CGPA'])],
-            'Academic_Performance': [int(request.form['Academic_Performance'])],
-            'Internship_Experience': [request.form['Internship_Experience']], # This is a string ('Yes'/'No')
-            'Communication_Skills': [int(request.form['Communication_Skills'])],
-            'Projects_Completed': [int(request.form['Projects_Completed'])]
-        }
+        # Get JSON input from user
+        data = request.get_json()
 
-        # Create a pandas DataFrame. The model pipeline expects this format.
-        input_df = pd.DataFrame(features)
+        # Convert JSON to DataFrame (since model expects tabular input)
+        input_df = pd.DataFrame([data])
 
-        # Make prediction using the loaded pipeline
+        # Make prediction
         prediction = model.predict(input_df)
 
-        # Format the output for display
-        output = 'Placed' if prediction[0] == 'Yes' else 'Not Placed'
-
+        # Return result
+        return jsonify({
+            "prediction": prediction.tolist()
+        })
     except Exception as e:
-        # Handle potential errors during prediction
-        output = f"An error occurred: {e}"
-
-    # Render the page again with the prediction result
-    return render_template('index.html', prediction_text=f'Prediction: {output}')
+        return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
+
+
